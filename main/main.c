@@ -11,6 +11,7 @@
 #include "u8g2.h"
 #include "u8g2_esp32_hal.h"
 #include "DHT22.h"
+#include "graphics.h"
 
 #define ESP_INTR_FLAG_DEFAULT 0
 
@@ -88,47 +89,15 @@ void vU8G2(void *pvParameter) {
 		snprintf(temp_str, sizeof(temp_str), "%.1f°C", temp);
 		snprintf(hum_str, sizeof(hum_str), "%.1f%%", hum);
 
-
 		u8g2_ClearBuffer(&u8g2);
 		u8g2_SetFont(&u8g2, u8g2_font_9x18B_tf);
 		u8g2_SetFontPosTop(&u8g2);
 
 		switch (screen_select) {
-			case 0:
-				u8g2_DrawUTF8(&u8g2, 0, 0, temp_str);
-				u8g2_DrawUTF8(&u8g2, 0, 20, hum_str);
-				u8g2_DrawRBox(&u8g2, 0, 52, 32, 15, 5);
-				u8g2_DrawRFrame(&u8g2, 31, 52, 33, 15, 5);
-				u8g2_DrawRFrame(&u8g2, 63, 52, 33, 15, 5);
-				u8g2_DrawRFrame(&u8g2, 95, 52, 33, 15, 5);
-				break;
-
-			case 1:
-				u8g2_DrawUTF8(&u8g2, 0, 0, temp_str);
-				u8g2_DrawUTF8(&u8g2, 0, 20, hum_str);
-				u8g2_DrawRFrame(&u8g2, 0, 52, 32, 15, 5);
-				u8g2_DrawRBox(&u8g2, 31, 52, 33, 15, 5);
-				u8g2_DrawRFrame(&u8g2, 63, 52, 33, 15, 5);
-				u8g2_DrawRFrame(&u8g2, 95, 52, 33, 15, 5);
-				break;
-
-			case 2:
-				u8g2_DrawUTF8(&u8g2, 0, 0, temp_str);
-				u8g2_DrawUTF8(&u8g2, 0, 20, hum_str);
-				u8g2_DrawRFrame(&u8g2, 0, 52, 32, 15, 5);
-				u8g2_DrawRFrame(&u8g2, 31, 52, 33, 15, 5);
-				u8g2_DrawRBox(&u8g2, 63, 52, 33, 15, 5);
-				u8g2_DrawRFrame(&u8g2, 95, 52, 33, 15, 5);
-				break;
-
-			case 3:
-				u8g2_DrawUTF8(&u8g2, 0, 0, temp_str);
-				u8g2_DrawUTF8(&u8g2, 0, 20, hum_str);
-				u8g2_DrawRFrame(&u8g2, 0, 52, 32, 15, 5);
-				u8g2_DrawRFrame(&u8g2, 31, 52, 33, 15, 5);
-				u8g2_DrawRFrame(&u8g2, 63, 52, 33, 15, 5);
-				u8g2_DrawRBox(&u8g2, 95, 52, 33, 15, 5);
-				break;
+			case 0: draw_page1(&u8g2, temp_str, hum_str); break;
+			case 1: draw_page2(&u8g2); break;
+			case 2: draw_page3(&u8g2); break;
+			case 3: draw_page4(&u8g2); break;
 		}
 
 		u8g2_SendBuffer(&u8g2);
