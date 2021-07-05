@@ -14,6 +14,7 @@
 
 #define ESP_INTR_FLAG_DEFAULT 0
 
+#define INT_BUTTON 0
 #define INT_LED
 #define PIN_DHT22 33
 #define PIN_CLK 18
@@ -25,6 +26,8 @@
 
 static xQueueHandle temp_queue = NULL;
 static xQueueHandle hum_queue = NULL;
+char screen_select = 0;
+TaskHandle_t ISR = NULL;
 
 
 void vDHT22(void *pvParameter) {
@@ -83,25 +86,89 @@ void vU8G2(void *pvParameter) {
 		}
 
 		snprintf(temp_str, sizeof(temp_str), "%.1f°C", temp);
-		snprintf(hum_str, sizeof(hum_str), "%.1f%%H", hum);
+		snprintf(hum_str, sizeof(hum_str), "%.1f%%", hum);
 
 
 		u8g2_ClearBuffer(&u8g2);
 		u8g2_SetFont(&u8g2, u8g2_font_9x18B_tf);
 		u8g2_SetFontPosTop(&u8g2);
-		u8g2_DrawUTF8(&u8g2, 0, 1, temp_str);
-		u8g2_DrawUTF8(&u8g2, 0, 20, hum_str);
-		u8g2_SendBuffer(&u8g2);
 
-		vTaskDelay(1000 / portTICK_RATE_MS);
+		switch (screen_select) {
+			case 0:
+				u8g2_DrawUTF8(&u8g2, 0, 0, temp_str);
+				u8g2_DrawUTF8(&u8g2, 0, 20, hum_str);
+				u8g2_DrawRBox(&u8g2, 0, 52, 32, 15, 5);
+				u8g2_DrawRFrame(&u8g2, 31, 52, 33, 15, 5);
+				u8g2_DrawRFrame(&u8g2, 63, 52, 33, 15, 5);
+				u8g2_DrawRFrame(&u8g2, 95, 52, 33, 15, 5);
+				break;
+
+			case 1:
+				u8g2_DrawUTF8(&u8g2, 0, 0, temp_str);
+				u8g2_DrawUTF8(&u8g2, 0, 20, hum_str);
+				u8g2_DrawRFrame(&u8g2, 0, 52, 32, 15, 5);
+				u8g2_DrawRBox(&u8g2, 31, 52, 33, 15, 5);
+				u8g2_DrawRFrame(&u8g2, 63, 52, 33, 15, 5);
+				u8g2_DrawRFrame(&u8g2, 95, 52, 33, 15, 5);
+				break;
+
+			case 2:
+				u8g2_DrawUTF8(&u8g2, 0, 0, temp_str);
+				u8g2_DrawUTF8(&u8g2, 0, 20, hum_str);
+				u8g2_DrawRFrame(&u8g2, 0, 52, 32, 15, 5);
+				u8g2_DrawRFrame(&u8g2, 31, 52, 33, 15, 5);
+				u8g2_DrawRBox(&u8g2, 63, 52, 33, 15, 5);
+				u8g2_DrawRFrame(&u8g2, 95, 52, 33, 15, 5);
+				break;
+
+			case 3:
+				u8g2_DrawUTF8(&u8g2, 0, 0, temp_str);
+				u8g2_DrawUTF8(&u8g2, 0, 20, hum_str);
+				u8g2_DrawRFrame(&u8g2, 0, 52, 32, 15, 5);
+				u8g2_DrawRFrame(&u8g2, 31, 52, 33, 15, 5);
+				u8g2_DrawRFrame(&u8g2, 63, 52, 33, 15, 5);
+				u8g2_DrawRBox(&u8g2, 95, 52, 33, 15, 5);
+				break;
+		}
+
+		u8g2_SendBuffer(&u8g2);
+		vTaskDelay(500 / portTICK_RATE_MS);
 	}
 }
 
+
+void vButton(void *pvParameter) {
+	while(1){
+		vTaskSuspend(NULL);
+		ESP_LOGI("vButton", "button pressed");
+
+		if (screen_select < 3) {
+			screen_select++;
+		}
+		else {
+			screen_select = 0;
+		}
+	}
+}
+
+void IRAM_ATTR button_isr_handler(void* arg) {
+	xTaskResumeFromISR(ISR);
+}
+
+
 void app_main() {
+	gpio_pad_select_gpio(INT_BUTTON);
+	gpio_set_direction(INT_BUTTON, GPIO_MODE_INPUT);
+	gpio_set_intr_type(INT_BUTTON, GPIO_INTR_NEGEDGE);
+	gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
+	gpio_isr_handler_add(INT_BUTTON, button_isr_handler, NULL);
+
+
 	temp_queue = xQueueCreate(1, sizeof(float));
 	hum_queue = xQueueCreate(1, sizeof(float));
 
 	vTaskDelay(1000 / portTICK_RATE_MS );
 	xTaskCreate(&vDHT22, "vDHT22", 2048, NULL, 5, NULL);
 	xTaskCreate(&vU8G2, "vU8G2", 4096, NULL, 5, NULL);
+	xTaskCreate(vButton, "vButton", 4096, NULL , 10, &ISR);
 }
